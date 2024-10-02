@@ -44,5 +44,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: radio-101-pdf
+          name: radio-101-latest
           path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          retention-days: 1
+          if-no-files-found: error
+          overwrite: true
