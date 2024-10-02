@@ -40,21 +40,19 @@ jobs:
           git checkout --orphan gh-pages
           git rm -rf .
           mv main.pdf radio-101.pdf
-          echo "PDF file contents:" >> index.html
-          echo "<a href='radio-101.pdf'>Download PDF</a>" >> index.html
-          git add radio-101.pdf index.html
+          git add radio-101.pdf
           git commit -m "Publish PDF"
           git push -f origin gh-pages
 
-      - name: Debug GitHub Pages
+      - name: Update Readme
         run: |
-          echo "Checking gh-pages branch:"
-          git checkout gh-pages
-          ls -la
-          echo "Contents of index.html:"
-          cat index.html
-          echo "Verifying PDF file:"
-          file radio-101.pdf
+          git checkout main
+          sed -i '/\[Latest PDF Build\]/d' Readme.md
+          echo "" >> Readme.md
+          echo "[Latest PDF Build](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/radio-101.pdf)" >> Readme.md
+          git add Readme.md
+          git commit -m "Update Readme with latest PDF link"
+          git push origin main
 
       - name: Check GitHub Pages settings
         run: |
