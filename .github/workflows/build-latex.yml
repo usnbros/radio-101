@@ -58,16 +58,10 @@ jobs:
       - name: Get Artifact URL
         id: get_artifact_url
         run: |
-          ARTIFACT_INFO=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts")
-          ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | jq -r '.artifacts[] | select(.name=="radio-101-latest") | .id')
-          if [ -z "$ARTIFACT_ID" ]; then
-            echo "Error: Could not find artifact ID"
-            exit 1
-          fi
-          ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/radio-101-latest.zip"
-          echo "ARTIFACT_URL=$ARTIFACT_URL" >> $GITHUB_OUTPUT
-          echo "Artifact URL: $ARTIFACT_URL"
+          ARTIFACT_ID=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts" \
+            | jq '.artifacts[0].id')
+          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/radio-101-latest.zip" >> $GITHUB_OUTPUT
 
       - name: Update Readme
         run: |
