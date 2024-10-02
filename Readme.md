@@ -5,3 +5,4 @@ git commit -m "Commit message"
 git tag v0.0.1
 git push origin main --tags
 ```
+[Latest PDF Build](https://github.com/usnbros/radio-101/actions/artifacts/2007974186/radio-101-latest.zip)
