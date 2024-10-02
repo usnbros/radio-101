@@ -7,4 +7,5 @@ git push origin main --tags
 ```
 
 
-[Latest PDF Build](https://usnbros.github.io/radio-101/radio-101.pdf)
+
+[Latest PDF Build](https://github.com/usnbros/radio-101/actions/artifacts/2008180078/radio-101-latest.zip)
