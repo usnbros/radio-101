@@ -1,4 +1,4 @@
-name: Build LaTeX document and Create Release
+name: Build LaTeX document and Publish PDF
 on:
   push:
     tags:
@@ -47,30 +47,20 @@ jobs:
           echo "LaTeX compilation failed. Displaying log file:"
           cat main.log
 
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
-          name: Release ${{ steps.get_version.outputs.VERSION }}
-          body: |
-            Release of Radio 101 version ${{ steps.get_version.outputs.VERSION }}
-          draft: false
-          prerelease: false
-
-      - name: Get PDF Download URL
-        id: get_pdf_url
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Deploy to GitHub Pages
         run: |
-          RELEASE_INFO=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
-          PDF_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith(".pdf")) | .browser_download_url')
-          echo "PDF_URL=${PDF_URL}" >> $GITHUB_OUTPUT
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git checkout --orphan gh-pages
+          git rm -rf .
+          mv radio-101-${{ steps.get_version.outputs.VERSION }}.pdf index.pdf
+          git add index.pdf
+          git commit -m "Publish PDF"
+          git push -f origin gh-pages
 
       - name: Update Readme
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
+          git checkout main
           # Check if Readme.md exists, create it if it doesn't
           if [ ! -f Readme.md ]; then
             echo "# Radio 101" > Readme.md
@@ -82,16 +72,14 @@ jobs:
 
           # Add new latest build line at the end of the file
           echo "" >> Readme.md
-          echo "[Latest PDF Build](${{ steps.get_pdf_url.outputs.PDF_URL }})" >> Readme.md
+          echo "[Latest PDF Build](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.pdf)" >> Readme.md
 
           # Check if there are changes to commit
           if git diff --exit-code; then
             echo "No changes to Readme.md"
           else
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
             git add Readme.md
             git commit -m "Update Readme with latest PDF download link"
-            git push
+            git push origin main
           fi
         shell: bash
