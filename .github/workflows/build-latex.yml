@@ -40,6 +40,25 @@ jobs:
           git checkout --orphan gh-pages
           git rm -rf .
           mv main.pdf radio-101.pdf
-          git add radio-101.pdf
+          echo "PDF file contents:" >> index.html
+          echo "<a href='radio-101.pdf'>Download PDF</a>" >> index.html
+          git add radio-101.pdf index.html
           git commit -m "Publish PDF"
           git push -f origin gh-pages
+
+      - name: Debug GitHub Pages
+        run: |
+          echo "Checking gh-pages branch:"
+          git checkout gh-pages
+          ls -la
+          echo "Contents of index.html:"
+          cat index.html
+          echo "Verifying PDF file:"
+          file radio-101.pdf
+
+      - name: Check GitHub Pages settings
+        run: |
+          echo "Please ensure that GitHub Pages is enabled for this repository."
+          echo "Go to repository Settings -> Pages"
+          echo "Source should be set to 'Deploy from a branch'"
+          echo "Branch should be set to 'gh-pages' and folder to '/ (root)'"
