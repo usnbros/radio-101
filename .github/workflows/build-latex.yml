@@ -1,4 +1,4 @@
-name: Build LaTeX document and Publish PDF
+name: Build LaTeX document
 on:
   push:
     tags:
@@ -13,6 +13,15 @@ jobs:
     steps:
       - name: Set up Git repository
         uses: actions/checkout@v4
+
+      - name: Get the version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          fi
 
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
@@ -33,30 +42,34 @@ jobs:
           echo "LaTeX compilation failed. Displaying log file:"
           cat main.log
 
-      - name: Deploy to GitHub Pages
+      - name: Rename output file
+        if: success()
         run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          git checkout --orphan gh-pages
-          git rm -rf .
-          mv main.pdf radio-101.pdf
-          git add radio-101.pdf
-          git commit -m "Publish PDF"
-          git push -f origin gh-pages
+          mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+
+      - name: Upload PDF file as artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-101-latest
+          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          retention-days: 90
+
+      - name: Get Artifact URL
+        id: get_artifact_url
+        run: |
+          ARTIFACT_ID=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts" \
+            | jq '.artifacts[] | select(.name=="radio-101-latest") | .id')
+          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/radio-101-latest.zip" >> $GITHUB_OUTPUT
 
       - name: Update Readme
         run: |
-          git checkout main
           sed -i '/\[Latest PDF Build\]/d' Readme.md
           echo "" >> Readme.md
-          echo "[Latest PDF Build](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/radio-101.pdf)" >> Readme.md
+          echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           git add Readme.md
           git commit -m "Update Readme with latest PDF link"
-          git push origin main
-
-      - name: Check GitHub Pages settings
-        run: |
-          echo "Please ensure that GitHub Pages is enabled for this repository."
-          echo "Go to repository Settings -> Pages"
-          echo "Source should be set to 'Deploy from a branch'"
-          echo "Branch should be set to 'gh-pages' and folder to '/ (root)'"
+          git push
