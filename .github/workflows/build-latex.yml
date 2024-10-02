@@ -1,10 +1,8 @@
-name: Build LaTeX document and Update README
+name: Build LaTeX document and Create Release
 on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -49,25 +47,29 @@ jobs:
           echo "LaTeX compilation failed. Displaying log file:"
           cat main.log
 
-      - name: Upload PDF file as artifact
-        if: success()
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: radio-101-latest
-          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
-          retention-days: 1
-          if-no-files-found: error
-          overwrite: true
+          files: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            Release of Radio 101 version ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
 
-      - name: Get Artifact URL
-        id: get_artifact_url
+      - name: Get Release URL
+        id: get_release_url
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
-          ARTIFACT_ID=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts" \
-            | jq '.artifacts[] | select(.name=="radio-101-latest") | .id')
-          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/radio-101-latest.zip" >> $GITHUB_OUTPUT
+          RELEASE_URL=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+            | jq -r '.html_url')
+          echo "RELEASE_URL=${RELEASE_URL}" >> $GITHUB_OUTPUT
 
       - name: Update Readme
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           # Check if Readme.md exists, create it if it doesn't
           if [ ! -f Readme.md ]; then
@@ -80,7 +82,7 @@ jobs:
 
           # Add new latest build line at the end of the file
           echo "" >> Readme.md
-          echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+          echo "[Latest PDF Build](${{ steps.get_release_url.outputs.RELEASE_URL }})" >> Readme.md
 
           # Check if there are changes to commit
           if git diff --exit-code; then
@@ -89,7 +91,7 @@ jobs:
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add Readme.md
-            git commit -m "Update Readme with latest PDF link"
+            git commit -m "Update Readme with latest PDF release link"
             git push
           fi
         shell: bash
