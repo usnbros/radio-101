@@ -59,14 +59,14 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Get Release URL
-        id: get_release_url
+      - name: Get PDF Download URL
+        id: get_pdf_url
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          RELEASE_URL=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
-            | jq -r '.html_url')
-          echo "RELEASE_URL=${RELEASE_URL}" >> $GITHUB_OUTPUT
+          RELEASE_INFO=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+          PDF_URL=$(echo $RELEASE_INFO | jq -r '.assets[] | select(.name | endswith(".pdf")) | .browser_download_url')
+          echo "PDF_URL=${PDF_URL}" >> $GITHUB_OUTPUT
 
       - name: Update Readme
         if: startsWith(github.ref, 'refs/tags/')
@@ -82,7 +82,7 @@ jobs:
 
           # Add new latest build line at the end of the file
           echo "" >> Readme.md
-          echo "[Latest PDF Build](${{ steps.get_release_url.outputs.RELEASE_URL }})" >> Readme.md
+          echo "[Latest PDF Build](${{ steps.get_pdf_url.outputs.PDF_URL }})" >> Readme.md
 
           # Check if there are changes to commit
           if git diff --exit-code; then
@@ -91,7 +91,7 @@ jobs:
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add Readme.md
-            git commit -m "Update Readme with latest PDF release link"
+            git commit -m "Update Readme with latest PDF download link"
             git push
           fi
         shell: bash
