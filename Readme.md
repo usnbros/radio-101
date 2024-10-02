@@ -6,4 +6,5 @@ git tag v0.0.1
 git push origin main --tags
 ```
 
-[Latest PDF Build](https://usnbros.github.io/radio-101/index.pdf)
+
+[Latest PDF Build](https://usnbros.github.io/radio-101/radio-101.pdf)
