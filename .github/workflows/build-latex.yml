@@ -65,11 +65,13 @@ jobs:
 
       - name: Update Readme
         run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git fetch origin main:main
+          git checkout main
           sed -i '/\[Latest PDF Build\]/d' Readme.md
           echo "" >> Readme.md
           echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
           git add Readme.md
           git commit -m "Update Readme with latest PDF link"
-          git push
+          git push origin main
