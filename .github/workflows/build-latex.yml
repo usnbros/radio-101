@@ -13,18 +13,83 @@ jobs:
     permissions:
       contents: write
     steps:
-      # ... [previous steps remain the same] ...
+      - name: Set up Git repository
+        uses: actions/checkout@v4
+
+      - name: Get the version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          args: >-
+            -pdf 
+            -file-line-error 
+            -halt-on-error 
+            -interaction=nonstopmode
+          extra_system_packages: |
+            graphviz
+            ghostscript
+
+      - name: Rename output file
+        if: success()
+        run: |
+          mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+
+      - name: Check for compilation errors
+        if: failure()
+        run: |
+          echo "LaTeX compilation failed. Displaying log file:"
+          cat main.log
+
+      - name: Upload PDF file as artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-101-latest
+          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          retention-days: 1
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Get Artifact URL
+        id: get_artifact_url
+        run: |
+          ARTIFACT_ID=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts" \
+            | jq '.artifacts[] | select(.name=="radio-101-latest") | .id')
+          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/radio-101-latest.zip" >> $GITHUB_OUTPUT
 
       - name: Update Readme
         run: |
+          # Check if Readme.md exists, create it if it doesn't
+          if [ ! -f Readme.md ]; then
+            echo "# Radio 101" > Readme.md
+            echo "Creating new Readme.md file"
+          fi
+
           # Remove existing latest build line if it exists
-          sed -i '/^\[Latest PDF Build\]/d' Readme.md
-          
+          sed -i '/\[Latest PDF Build\]/d' Readme.md
+
           # Add new latest build line at the end of the file
-          echo -e "\n[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
-          
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add Readme.md
-          git commit -m "Update Readme with latest PDF link"
-          git push
+          echo "" >> Readme.md
+          echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+
+          # Check if there are changes to commit
+          if git diff --exit-code; then
+            echo "No changes to Readme.md"
+          else
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add Readme.md
+            git commit -m "Update Readme with latest PDF link"
+            git push
+          fi
+        shell: bash
