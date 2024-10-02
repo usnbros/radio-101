@@ -1,4 +1,4 @@
-name: Build LaTeX document
+name: Build LaTeX document and Update README
 on:
   push:
     tags:
@@ -8,6 +8,8 @@ on:
 jobs:
   build_latex:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Set up Git repository
         uses: actions/checkout@v4
@@ -49,3 +51,25 @@ jobs:
           retention-days: 1
           if-no-files-found: error
           overwrite: true
+
+      - name: Get Artifact URL
+        id: get_artifact_url
+        run: |
+          ARTIFACT_ID=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts" \
+            | jq '.artifacts[] | select(.name=="radio-101-latest") | .id')
+          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/radio-101-latest.zip" >> $GITHUB_OUTPUT
+
+      - name: Update README
+        run: |
+          # Remove existing latest build line if it exists
+          sed -i '/^\[Latest PDF Build\]/d' README.md
+          
+          # Add new latest build line at the end of the file
+          echo -e "\n[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> README.md
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "Update README with latest PDF link"
+          git push
