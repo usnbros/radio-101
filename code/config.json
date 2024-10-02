@@ -1,0 +1,11 @@
+[
+    {
+      "frequency": 1.26e9,
+      "sample_rate": 125e3,
+      "data": "./data/sig.bin"
+    },
+    {
+      "frequency": 2.406e9,
+      "sample_rate": 500e3
+    }
+  ]
