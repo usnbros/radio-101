@@ -32,16 +32,20 @@ jobs:
             -file-line-error 
             -halt-on-error 
             -interaction=nonstopmode
-            -jobname="radio-101-${{ steps.get_version.outputs.VERSION }}"
           extra_system_packages: |
             graphviz
             ghostscript
+
+      - name: Rename output file
+        if: success()
+        run: |
+          mv main.pdf "radio-101-${{ steps.get_version.outputs.VERSION }}.pdf"
 
       - name: Check for compilation errors
         if: failure()
         run: |
           echo "LaTeX compilation failed. Displaying log file:"
-          cat "radio-101-${{ steps.get_version.outputs.VERSION }}.log"
+          cat main.log
 
       - name: Create Release and Upload Asset
         if: success()
