@@ -14,15 +14,6 @@ jobs:
       - name: Set up Git repository
         uses: actions/checkout@v4
 
-      - name: Get the version
-        id: get_version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=latest" >> $GITHUB_OUTPUT
-          fi
-
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
@@ -36,11 +27,6 @@ jobs:
             graphviz
             ghostscript
 
-      - name: Rename output file
-        if: success()
-        run: |
-          mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
-
       - name: Check for compilation errors
         if: failure()
         run: |
@@ -53,33 +39,7 @@ jobs:
           git config --global user.email 'action@github.com'
           git checkout --orphan gh-pages
           git rm -rf .
-          mv radio-101-${{ steps.get_version.outputs.VERSION }}.pdf index.pdf
-          git add index.pdf
+          mv main.pdf radio-101.pdf
+          git add radio-101.pdf
           git commit -m "Publish PDF"
           git push -f origin gh-pages
-
-      - name: Update Readme
-        run: |
-          git checkout main
-          # Check if Readme.md exists, create it if it doesn't
-          if [ ! -f Readme.md ]; then
-            echo "# Radio 101" > Readme.md
-            echo "Creating new Readme.md file"
-          fi
-
-          # Remove existing latest build line if it exists
-          sed -i '/\[Latest PDF Build\]/d' Readme.md
-
-          # Add new latest build line at the end of the file
-          echo "" >> Readme.md
-          echo "[Latest PDF Build](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.pdf)" >> Readme.md
-
-          # Check if there are changes to commit
-          if git diff --exit-code; then
-            echo "No changes to Readme.md"
-          else
-            git add Readme.md
-            git commit -m "Update Readme with latest PDF download link"
-            git push origin main
-          fi
-        shell: bash
