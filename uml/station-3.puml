@@ -1,0 +1,27 @@
+@startuml
+
+frame "Укриття" {
+actor "Оператор" as operator
+node "Робоча станція з ПЗ" as pc
+}
+
+cloud "Internet" as net
+
+frame "Віддалений пост" {
+agent "  Raspberry Pi" as paspberry
+action "LNA" as lna
+agent SDR as sdr
+}
+
+interface "Виносна антена" as antenna
+
+
+operator -right- pc
+pc -right- net
+
+net -right- paspberry
+paspberry -right- sdr
+sdr -right- lna
+lna -right- antenna : 5-15м
+
+@enduml

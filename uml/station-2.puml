@@ -1,0 +1,26 @@
+@startuml
+
+frame "Укриття" {
+actor "Оператор" as operator
+node "Робоча станція з ПЗ" as pc
+agent PPoE as ppoe
+}
+
+frame "Віддалений пост" {
+agent "  Raspberry Pi\nwith PPoE Shield" as paspberry
+action "LNA" as lna
+agent SDR as sdr
+}
+
+interface "Виносна антена" as antenna
+
+
+operator -right- pc
+pc -right- ppoe
+ppoe -right- paspberry: 300м
+
+paspberry -right- sdr
+sdr -right- lna
+lna -right- antenna : 5-15м
+
+@enduml

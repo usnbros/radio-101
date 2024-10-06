@@ -1,0 +1,17 @@
+@startuml
+
+frame "Укриття" {
+actor "Оператор" as operator
+node "Робоча станція з ПЗ" as pc
+agent SDR as sdr
+action "LNA" as lna
+}
+interface "Виносна антена" as antenna
+
+
+operator -right- pc
+pc -right- sdr
+sdr -right- lna
+lna -right- antenna : 5-15м
+
+@enduml
