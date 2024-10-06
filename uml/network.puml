@@ -1,0 +1,14 @@
+@startuml
+actor "Оператор" as operator
+cloud "Internet\nRS-485\nCAN-BUS" as network
+agent "Засіб РЕБ" as R1
+agent "Засіб РЕБ" as R2
+agent "Засіб РЕБ" as R3
+
+
+operator -- network
+network -- R1
+network -- R2
+network -- R3
+
+@enduml
