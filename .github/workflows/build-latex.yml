@@ -23,7 +23,7 @@ jobs:
             echo "VERSION=latest" >> $GITHUB_OUTPUT
           fi
 
-      - name: Compile LaTeX document
+      - name: Compile LaTeX document to PDF
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
@@ -42,17 +42,27 @@ jobs:
           echo "LaTeX compilation failed. Displaying log file:"
           cat main.log
 
-      - name: Rename output file
+      - name: Rename PDF output file
         if: success()
         run: |
           mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
 
-      - name: Upload PDF file as artifact
+      - name: Convert LaTeX document to EPUB
+        if: success()
+        run: |
+          pandoc main.tex -o radio-101-${{ steps.get_version.outputs.VERSION }}.epub
+
+      - name: Create zip with PDF and EPUB
+        if: success()
+        run: |
+          zip radio-101-${{ steps.get_version.outputs.VERSION }}.zip radio-101-${{ steps.get_version.outputs.VERSION }}.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.epub
+
+      - name: Upload ZIP file as artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: radio-101-latest
-          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          path: radio-101-${{ steps.get_version.outputs.VERSION }}.zip
           retention-days: 90
 
       - name: Get Artifact URL
@@ -71,7 +81,7 @@ jobs:
           git checkout main
           sed -i '/\[Latest PDF Build\]/d' Readme.md
           echo "" >> Readme.md
-          echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+          echo "[Latest PDF and EPUB Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
           git add Readme.md
-          git commit -m "Update Readme with latest PDF link"
+          git commit -m "Update Readme with latest PDF and EPUB link"
           git push origin main
