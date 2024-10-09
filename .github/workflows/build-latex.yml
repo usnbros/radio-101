@@ -14,11 +14,6 @@ jobs:
       - name: Set up Git repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
-
       - name: Get the version
         id: get_version
         run: |
@@ -28,7 +23,7 @@ jobs:
             echo "VERSION=latest" >> $GITHUB_OUTPUT
           fi
 
-      - name: Compile LaTeX document to PDF
+      - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
@@ -47,27 +42,17 @@ jobs:
           echo "LaTeX compilation failed. Displaying log file:"
           cat main.log
 
-      - name: Rename PDF output file
+      - name: Rename output file
         if: success()
         run: |
           mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
 
-      - name: Convert LaTeX document to EPUB using Pandoc
-        if: success()
-        run: |
-          pandoc main.tex --from=latex --to=epub3 -o radio-101-${{ steps.get_version.outputs.VERSION }}.epub --metadata title="Radio 101" --toc --self-contained
-
-      - name: Create zip with PDF and EPUB
-        if: success()
-        run: |
-          zip radio-101-${{ steps.get_version.outputs.VERSION }}.zip radio-101-${{ steps.get_version.outputs.VERSION }}.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.epub
-
-      - name: Upload ZIP file as artifact
+      - name: Upload PDF file as artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: radio-101-latest
-          path: radio-101-${{ steps.get_version.outputs.VERSION }}.zip
+          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
           retention-days: 90
 
       - name: Get Artifact URL
@@ -82,11 +67,11 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git fetch origin main:main
           git checkout main
-          git pull origin main
-          # Remove the existing link with the label "[Latest PDF and EPUB Build]" and replace it with the new one
-          sed -i '/\[Latest PDF and EPUB Build\]/d' Readme.md
-          echo "[Latest PDF and EPUB Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+          sed -i '/\[Latest PDF Build\]/d' Readme.md
+          echo "" >> Readme.md
+          echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
           git add Readme.md
-          git commit -m "Update Readme with latest PDF and EPUB link" || echo "No changes to commit"
+          git commit -m "Update Readme with latest PDF link"
           git push origin main
