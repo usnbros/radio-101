@@ -15,7 +15,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc python3-pip
+          pip3 install latex2ebook
 
       - name: Get the version
         id: get_version
@@ -50,10 +53,10 @@ jobs:
         run: |
           mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
 
-      - name: Convert LaTeX document to EPUB
+      - name: Convert LaTeX document to EPUB using latex2ebook
         if: success()
         run: |
-          pandoc main.tex -o radio-101-${{ steps.get_version.outputs.VERSION }}.epub
+          latex2ebook main.tex --output radio-101-${{ steps.get_version.outputs.VERSION }}.epub
 
       - name: Create zip with PDF and EPUB
         if: success()
