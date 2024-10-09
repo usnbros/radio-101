@@ -80,13 +80,4 @@ jobs:
 
       - name: Update Readme
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git checkout main
-          git pull origin main
-          sed -i '/\[Latest PDF Build\]/d' Readme.md
-          echo "" >> Readme.md
-          echo "[Latest PDF and EPUB Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
-          git add Readme.md
-          git commit -m "Update Readme with latest PDF and EPUB link" || echo "No changes to commit"
-          git push origin main
+          git config --local user.email "action@
