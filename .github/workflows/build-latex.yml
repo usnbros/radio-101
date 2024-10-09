@@ -80,4 +80,13 @@ jobs:
 
       - name: Update Readme
         run: |
-          git config --local user.email "action@
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git checkout main
+          git pull origin main
+          # Remove the existing link with the label "[Latest PDF and EPUB Build]" and replace it with the new one
+          sed -i '/\[Latest PDF and EPUB Build\]/d' Readme.md
+          echo "[Latest PDF and EPUB Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+          git add Readme.md
+          git commit -m "Update Readme with latest PDF and EPUB link" || echo "No changes to commit"
+          git push origin main
