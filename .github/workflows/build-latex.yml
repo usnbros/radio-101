@@ -88,4 +88,5 @@ jobs:
           echo "" >> Readme.md
           echo "[Latest PDF and EPUB Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
           git add Readme.md
-          git commit -m "Update Readme with latest PDF and EPUB link
+          git commit -m "Update Readme with latest PDF and EPUB link" || echo "No changes to commit"
+          git push origin main
