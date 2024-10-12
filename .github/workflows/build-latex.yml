@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Set up Git repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensure the full history is fetched
 
       - name: Get the version
         id: get_version
@@ -67,12 +69,11 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git fetch origin main:main
-          git checkout main
+          git checkout -b update-readme # Create a new branch for the changes
           # Remove the existing Latest PDF Build link
           sed -i '/\[Latest PDF Build\](.*)/d' Readme.md
           # Add the new link to the latest PDF build
           echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
           git add Readme.md
           git commit -m "Update Readme with latest PDF link"
-          git push origin main
+          git push origin update-readme
