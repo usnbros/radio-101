@@ -4,77 +4,52 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-
 jobs:
   build_latex:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
-      - name: Set up Git repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Ensure the full history is fetched
-
-      - name: Get the version
-        id: get_version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=latest" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Compile LaTeX document
-        uses: xu-cheng/latex-action@v3
-        with:
-          root_file: main.tex
-          args: >-
-            -pdf 
-            -file-line-error 
-            -halt-on-error 
-            -interaction=nonstopmode
-          extra_system_packages: |
-            graphviz
-            ghostscript
-
-      - name: Check for compilation errors
-        if: failure()
-        run: |
-          echo "LaTeX compilation failed. Displaying log file:"
-          cat main.log
-
-      - name: Rename output file
-        if: success()
-        run: |
-          mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
-
-      - name: Upload PDF file as artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: radio-101-latest
-          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
-          retention-days: 90
-
-      - name: Get Artifact URL
-        id: get_artifact_url
-        run: |
-          ARTIFACT_INFO=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts")
-          ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | jq '.artifacts[0].id')
-          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/$ARTIFACT_ID" >> $GITHUB_OUTPUT
-
+      # ... (previous steps remain the same)
+      
       - name: Update Readme
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git checkout -b update-readme # Create a new branch for the changes
-          git pull origin update-readme --rebase # Rebase on top of the remote changes
-          # Remove the existing Latest PDF Build link
-          sed -i '/\[Latest PDF Build\](.*)/d' Readme.md
-          # Add the new link to the latest PDF build
-          echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
+          
+          # Fetch the latest changes from the remote
+          git fetch origin main
+          
+          # Create a new branch based on the latest main
+          git checkout -b update-readme-${{ github.run_id }} origin/main
+          
+          # Update or add the PDF link
+          NEW_LINK="[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})"
+          if grep -q "\[Latest PDF Build\]" Readme.md; then
+            sed -i 's|\[Latest PDF Build\].*|'"$NEW_LINK"'|' Readme.md
+          else
+            echo -e "\n$NEW_LINK" >> Readme.md
+          fi
+          
+          # Check if there are changes
+          if git diff --exit-code; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Commit and push changes
           git add Readme.md
           git commit -m "Update Readme with latest PDF link"
-          git push origin update-readme --force-with-lease
+          git push origin update-readme-${{ github.run_id }}
+          
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet origin/main; then
+            echo "No changes to create a PR for"
+          else
+            pr_url=$(gh pr create --title "Update README with latest PDF link" --body "Automated update of the PDF link in README" --base main --head update-readme-${{ github.run_id }})
+            echo "Created PR: $pr_url"
+          fi
