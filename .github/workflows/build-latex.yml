@@ -70,10 +70,11 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git checkout -b update-readme # Create a new branch for the changes
+          git pull origin update-readme --rebase # Rebase on top of the remote changes
           # Remove the existing Latest PDF Build link
           sed -i '/\[Latest PDF Build\](.*)/d' Readme.md
           # Add the new link to the latest PDF build
           echo "[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})" >> Readme.md
           git add Readme.md
           git commit -m "Update Readme with latest PDF link"
-          git push origin update-readme
+          git push origin update-readme --force-with-lease
