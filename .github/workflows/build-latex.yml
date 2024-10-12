@@ -4,17 +4,75 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+
 jobs:
   build_latex:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+
     steps:
-      # ... (previous steps remain the same)
-      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get the version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          args: >-
+            -pdf 
+            -file-line-error 
+            -halt-on-error 
+            -interaction=nonstopmode
+          extra_system_packages: |
+            graphviz
+            ghostscript
+
+      - name: Check for compilation errors
+        if: failure()
+        run: |
+          echo "LaTeX compilation failed. Displaying log file:"
+          cat main.log
+
+      - name: Rename output file
+        if: success()
+        run: |
+          mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+
+      - name: Upload PDF file as artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-101-latest
+          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          retention-days: 90
+
+      - name: Get Artifact URL
+        id: get_artifact_url
+        run: |
+          ARTIFACT_INFO=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts")
+          ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | jq '.artifacts[0].id')
+          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/$ARTIFACT_ID" >> $GITHUB_OUTPUT
+
       - name: Update Readme
         run: |
+          # Ensure we're in the repository directory
+          cd $GITHUB_WORKSPACE
+
+          # Configure Git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
@@ -42,7 +100,7 @@ jobs:
           git add Readme.md
           git commit -m "Update Readme with latest PDF link"
           git push origin update-readme-${{ github.run_id }}
-          
+
       - name: Create Pull Request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
