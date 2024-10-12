@@ -11,4 +11,6 @@ git push origin main --tags
 
 
 
-[Latest PDF Build](https://github.com/usnbros/radio-101/actions/runs/11223013401/artifacts/2025948673)
+
+
+[Latest PDF and EPUB Build](https://github.com/usnbros/radio-101/actions/runs/11262367868/artifacts/2037059629)
