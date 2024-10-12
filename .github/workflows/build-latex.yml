@@ -1,8 +1,8 @@
 name: Build LaTeX document
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -10,22 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get the version
-        id: get_version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=latest" >> $GITHUB_OUTPUT
-          fi
 
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
@@ -40,74 +28,38 @@ jobs:
             graphviz
             ghostscript
 
-      - name: Check for compilation errors
-        if: failure()
-        run: |
-          echo "LaTeX compilation failed. Displaying log file:"
-          cat main.log
-
       - name: Rename output file
         if: success()
         run: |
-          mv main.pdf radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          mv main.pdf radio-101-latest.pdf
 
       - name: Upload PDF file as artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: radio-101-latest
-          path: radio-101-${{ steps.get_version.outputs.VERSION }}.pdf
+          path: radio-101-latest.pdf
           retention-days: 90
 
-      - name: Get Artifact URL
-        id: get_artifact_url
-        run: |
-          ARTIFACT_INFO=$(curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts")
-          ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | jq '.artifacts[0].id')
-          echo "ARTIFACT_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/$ARTIFACT_ID" >> $GITHUB_OUTPUT
-
       - name: Update Readme
+        if: success()
         run: |
-          # Ensure we're in the repository directory
-          cd $GITHUB_WORKSPACE
-
-          # Configure Git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          # Get the artifact URL
+          ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
-          # Fetch the latest changes from the remote
-          git fetch origin main
-          
-          # Create a new branch based on the latest main
-          git checkout -b update-readme-${{ github.run_id }} origin/main
-          
-          # Update or add the PDF link
-          NEW_LINK="[Latest PDF Build](${{ steps.get_artifact_url.outputs.ARTIFACT_URL }})"
+          # Update the PDF link in Readme.md
+          NEW_LINK="[Latest PDF Build]($ARTIFACT_URL)"
           if grep -q "\[Latest PDF Build\]" Readme.md; then
             sed -i 's|\[Latest PDF Build\].*|'"$NEW_LINK"'|' Readme.md
           else
             echo -e "\n$NEW_LINK" >> Readme.md
           fi
-          
-          # Check if there are changes
-          if git diff --exit-code; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          
-          # Commit and push changes
-          git add Readme.md
-          git commit -m "Update Readme with latest PDF link"
-          git push origin update-readme-${{ github.run_id }}
 
-      - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit changes
+        if: success()
         run: |
-          if git diff --quiet origin/main; then
-            echo "No changes to create a PR for"
-          else
-            pr_url=$(gh pr create --title "Update README with latest PDF link" --body "Automated update of the PDF link in README" --base main --head update-readme-${{ github.run_id }})
-            echo "Created PR: $pr_url"
-          fi
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add Readme.md
+          git commit -m "Update Readme with latest PDF link" || echo "No changes to commit"
+          git push
